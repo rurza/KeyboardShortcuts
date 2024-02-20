@@ -1,14 +1,5 @@
-<div align="center">
-	<img width="900" src="https://github.com/sindresorhus/KeyboardShortcuts/raw/main/logo-light.png#gh-light-mode-only" alt="KeyboardShortcuts">
-	<img width="900" src="https://github.com/sindresorhus/KeyboardShortcuts/raw/main/logo-dark.png#gh-dark-mode-only" alt="KeyboardShortcuts">
-	<br>
-</div>
 
-This package lets you add support for user-customizable global keyboard shortcuts to your macOS app in minutes. It's fully sandbox and Mac App Store compatible. And it's used in production by [Dato](https://sindresorhus.com/dato), [Jiffy](https://sindresorhus.com/jiffy), [Plash](https://github.com/sindresorhus/Plash), and [Lungo](https://sindresorhus.com/lungo).
-
-I'm happy to accept more configurability and features. PR welcome! What you see here is just what I needed for my own apps.
-
-<img src="https://github.com/sindresorhus/KeyboardShortcuts/raw/main/screenshot.png" width="532">
+Fork of Sindre's amazing [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) but with custom UI
 
 ## Requirements
 

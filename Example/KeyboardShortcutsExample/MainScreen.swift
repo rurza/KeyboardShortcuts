@@ -85,18 +85,16 @@ private struct DoubleShortcut: View {
 
 	var body: some View {
 		Form {
-			KeyboardShortcuts.Recorder("Shortcut 1:", name: .testShortcut1)
+			KeyboardShortcuts.Recorder(for: .testShortcut1)
 				.overlay(alignment: .trailing) {
 					Text("Pressed? \(isPressed1 ? "👍" : "👎")")
 						.offset(x: 90)
 				}
-			KeyboardShortcuts.Recorder(for: .testShortcut2) {
-				Text("Shortcut 2:") // Intentionally using the verbose initializer for testing.
-			}
-				.overlay(alignment: .trailing) {
-					Text("Pressed? \(isPressed2 ? "👍" : "👎")")
-						.offset(x: 90)
-				}
+//            KeyboardShortcuts.NewRecorder(for: .testShortcut2)
+//				.overlay(alignment: .trailing) {
+//					Text("Pressed? \(isPressed2 ? "👍" : "👎")")
+//						.offset(x: 90)
+//				}
 			Spacer()
 			Button("Reset All") {
 				KeyboardShortcuts.reset(.testShortcut1, .testShortcut2)
