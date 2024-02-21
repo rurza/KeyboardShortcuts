@@ -11,6 +11,7 @@ extension KeyboardShortcuts {
         let onChange: ((_ shortcut: Shortcut?) -> Void)?
 
         public func makeNSView(context: Context) -> NSViewType {
+            print(#function)
             let view = RecorderContainerView(for: name, onChange: onChange)
             view.delegate = context.coordinator
             return view
@@ -47,6 +48,7 @@ extension KeyboardShortcuts {
     public struct Recorder: View {
         private let name: Name
         private let onChange: ((Shortcut?) -> Void)?
+        @Namespace private var namespace
 
         public init(for name: KeyboardShortcuts.Name, onChange: ((KeyboardShortcuts.Shortcut?) -> Void)? = nil) {
             self.name = name
@@ -70,43 +72,51 @@ extension KeyboardShortcuts {
                     },
                     onChange: onChange
                 )
-                .border(.red)
-                .onPreferenceChange(ContentSize.self) { size in
-                    self.size = size
-                }
-                .frame(width: size.width, height: size.height)
+                .frame(width: 0, height: 0)
                 label
-                    .frame(width: 120, height: 40)
-                    .background(
-                        GeometryReader { geometry in
-                            Color.clear
-                                .preference(key: ContentSize.self, value: geometry.size)
-                        }
-                    )
-                    .border(.yellow)
             }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                isActive.toggle()
-            }
+
+            .animation(.default, value: mode)
         }
 
         @ViewBuilder
         var label: some View {
             switch mode {
             case .ready:
-                Text("RECORD")
+                RecorderReadyLabel(namespace: namespace)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isActive.toggle()
+                    }
             case .preRecording:
                 HStack {
-                    Circle().foregroundStyle(.red).frame(width: 8, height: 8)
-                    Text("REC")
+                    PreRecordingLabel(namespace: namespace)
+                    Button(
+                        action: { isActive = false },
+                        label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .imageScale(.large)
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .transition(.push(from: .trailing))
+                    .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
                 }
+
             case .recording(let string):
                 Text(string)
             case .set(let string):
                 Text(string)
             }
         }
+
+    }
+
+    enum GeometryID: Hashable {
+        case pill
+        case label
+        case dot
+        case cancel
     }
 
     private struct ContentSize: PreferenceKey {
@@ -119,8 +129,10 @@ extension KeyboardShortcuts {
     }
 }
 
+#if DEBG
 #Preview {
     KeyboardShortcuts.Recorder(
         for: .init("test")
     )
 }
+#endif
