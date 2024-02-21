@@ -1,18 +1,17 @@
 import SwiftUI
 
 extension KeyboardShortcuts {
-
     struct _Recorder: NSViewRepresentable {
         // swiftlint:disable:this type_name
         typealias NSViewType = RecorderContainerView
 
         let name: Name
-        @Binding var isActive: Bool
+        let isActive: Bool
         let modeChange: (RecorderMode) -> Void
         let onChange: ((_ shortcut: Shortcut?) -> Void)?
 
         public func makeNSView(context: Context) -> NSViewType {
-           let view = RecorderContainerView(for: name, onChange: onChange)
+            let view = RecorderContainerView(for: name, onChange: onChange)
             view.delegate = context.coordinator
             return view
         }
@@ -21,7 +20,11 @@ extension KeyboardShortcuts {
             print(#function)
             context.coordinator.parent = self
             nsView.shortcutName = name
-            nsView.active = isActive
+            if isActive {
+                nsView.startRecording()
+            } else {
+                nsView.stopRecording()
+            }
         }
 
         public func makeCoordinator() -> Coordinator {
@@ -36,26 +39,19 @@ extension KeyboardShortcuts {
             }
 
             func recorderModeDidChange(_ mode: KeyboardShortcuts.RecorderMode) {
-                switch mode {
-                case .ready, .set:
-                    self.parent.isActive = false
-                case .preRecording, .recording:
-                    break
-                }
                 self.parent.modeChange(mode)
             }
         }
     }
 
     public struct Recorder: View {
+        private let name: Name
+        private let onChange: ((Shortcut?) -> Void)?
 
         public init(for name: KeyboardShortcuts.Name, onChange: ((KeyboardShortcuts.Shortcut?) -> Void)? = nil) {
             self.name = name
             self.onChange = onChange
         }
-        
-        private let name: Name
-        private let onChange: ((Shortcut?) -> Void)?
 
         @State private var isActive = false
         @State private var mode: RecorderMode = .ready
@@ -65,9 +61,12 @@ extension KeyboardShortcuts {
             ZStack {
                 _Recorder(
                     name: name,
-                    isActive: $isActive,
+                    isActive: isActive,
                     modeChange: { mode in
                         self.mode = mode
+                        if !mode.isActive {
+                            isActive = false
+                        }
                     },
                     onChange: onChange
                 )

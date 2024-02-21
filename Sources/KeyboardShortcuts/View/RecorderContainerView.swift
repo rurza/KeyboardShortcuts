@@ -2,15 +2,14 @@ import AppKit
 import Carbon.HIToolbox
 
 protocol RecorderContainerDelegate: AnyObject {
-//    func recordingDidEnd()
     func recorderModeDidChange(_ mode: KeyboardShortcuts.RecorderMode)
 }
 
 extension KeyboardShortcuts {
     final class RecorderContainerView: NSView {
         private let onChange: ((_ shortcut: Shortcut?) -> Void)?
-        var oldSet: String?
-        var mode: RecorderMode = .ready {
+        private var oldSet: String?
+        private var mode: RecorderMode = .ready {
             willSet {
                 if case let .set(string) = mode, case .preRecording = newValue {
                     oldSet = string
@@ -25,33 +24,14 @@ extension KeyboardShortcuts {
                 }
             }
         }
-        var active = false {
-            didSet {
-                guard oldValue != active else { return }
-                if active {
-                    mode = .preRecording
-                    focus()
-                } else {
-                    if let oldSet {
-                        mode = .set(oldSet)
-                    } else if case .preRecording = mode {
-                        mode = .ready
-                    } else if case .recording = mode {
-                        mode = .ready
-                    }
 
-                    blur()
-                }
-            }
-        }
-        
         var delegate: RecorderContainerDelegate?
         private var shortcutsNameChangeObserver: NSObjectProtocol?
         private var windowDidResignKeyObserver: NSObjectProtocol?
-        
+
         /**
          The shortcut name for the recorder.
-         
+
          Can be dynamically changed at any time.
          */
         var shortcutName: Name {
@@ -59,21 +39,13 @@ extension KeyboardShortcuts {
                 guard shortcutName != oldValue else {
                     return
                 }
-                
+
                 setStringValue(name: shortcutName)
-                
-                // This doesn't seem to be needed anymore, but I cannot test on older OS versions, so keeping it just in case.
-                if #unavailable(macOS 12) {
-                    DispatchQueue.main.async { [self] in
-                        // Prevents the placeholder from being cut off.
-                        blur()
-                    }
-                }
             }
         }
-        
+
         /// :nodoc:
-        override var canBecomeKeyView: Bool { true }
+        override var canBecomeKeyView: Bool { mode.isActive }
 
         required init(
             for name: Name,
@@ -81,28 +53,45 @@ extension KeyboardShortcuts {
         ) {
             self.shortcutName = name
             self.onChange = onChange
-            
+
             super.init(frame: .zero)
-            
-            
+
             self.wantsLayer = true
             setContentHuggingPriority(.defaultHigh, for: .vertical)
             setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
             setUpEvents()
         }
-        
+
         @available(*, unavailable)
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
         }
-        
+
+        func startRecording() {
+            guard !mode.isActive else { return }
+            mode = .preRecording
+            focus()
+        }
+
+        func stopRecording() {
+            if let oldSet {
+                mode = .set(oldSet)
+            } else if case .preRecording = mode {
+                mode = .ready
+            } else if case .recording = mode {
+                mode = .ready
+            }
+
+            blur()
+        }
+
         private func setStringValue(name: KeyboardShortcuts.Name) {
             if let shortcut = getShortcut(for: name).map({ "\($0)" }) {
                 mode = .set(shortcut)
             }
         }
-        
+
         private func setUpEvents() {
             shortcutsNameChangeObserver = NotificationCenter.default.addObserver(forName: .shortcutByNameDidChange, object: nil, queue: nil) { [weak self] notification in
                 guard
@@ -112,29 +101,23 @@ extension KeyboardShortcuts {
                 else {
                     return
                 }
-                
+
                 self.setStringValue(name: nameInNotification)
             }
         }
-        
-        private func endRecording() {
-            KeyboardShortcuts.isPaused = false
-            blur()
-//            active = false
-        }
-        
+
         /// :nodoc:
         override func viewDidMoveToWindow() {
             guard let window else {
                 windowDidResignKeyObserver = nil
-                endRecording()
+                endRecording(.ready)
                 return
             }
 
             setStringValue(name: shortcutName) // set here, not in the init so the property observer will be called
 
             // Ensures the recorder stops when the window is hidden.
-            // This is especially important for Settings windows, which as of macOS 13.5, 
+            // This is especially important for Settings windows, which as of macOS 13.5,
             // only hides instead of closes when you click the close button.
             windowDidResignKeyObserver = NotificationCenter.default
                 .addObserver(
@@ -142,45 +125,58 @@ extension KeyboardShortcuts {
                     object: window,
                     queue: nil
                 ) { [weak self] _ in
-                guard
-                    let self,
-                    let window = self.window
-                else {
-                    return
-                }
-                    self.endRecording()
-                    if case .preRecording = mode {
-                        self.mode = .ready
-                    } else if case .recording = mode {
-                        self.mode = .ready
+                    guard
+                        let self,
+                        let window = self.window
+                    else {
+                        return
                     }
+                    self.endRecording {
+                        if case .preRecording = self.mode {
+                            return .ready
+                        } else if case .recording = self.mode {
+                            return .ready
+                        } else {
+                            return self.mode
+                        }
+                    }
+
                     window.makeFirstResponder(nil)
                 }
-
         }
 
+        override func becomeFirstResponder() -> Bool {
+            let shouldBecomeFirstResponder = super.becomeFirstResponder()
+
+            guard shouldBecomeFirstResponder else {
+                return shouldBecomeFirstResponder
+            }
+
+            KeyboardShortcuts.isEnabled = false // The position here matters.
+            return shouldBecomeFirstResponder
+        }
 
         // in this method the event won't have modifiers, only the character
         override func performKeyEquivalent(with event: NSEvent) -> Bool {
-            guard active else { return false }
+            guard mode.isActive else { return false }
             guard !onlyTabPressed(event) else {
-                endRecording()
-                mode = .ready
+                endRecording(.ready)
                 return true
             }
 
             guard !onlyEscapePressed(event) else {
-                endRecording()
-                if let oldSet {
-                    mode = .set(oldSet)
-                } else {
-                    mode = .ready
+                endRecording {
+                    if let oldSet {
+                        return .set(oldSet)
+                    } else {
+                        return .ready
+                    }
                 }
+
                 return true
             }
 
             guard !onlyDeletePressed(event) else {
-                endRecording()
                 saveShortcut(nil)
                 return true
             }
@@ -191,15 +187,12 @@ extension KeyboardShortcuts {
             }
 
             guard !event.modifiers.isEmpty, let shortcut = Shortcut(event: event) else {
-                endRecording()
-                mode = .ready
+                endRecording(.ready)
                 return false
             }
 
-
             if let menuItem = shortcut.takenByMainMenu {
-                endRecording()
-                mode = .ready
+                endRecording(.ready)
 
                 NSAlert.showModal(
                     for: self.window,
@@ -209,8 +202,7 @@ extension KeyboardShortcuts {
             }
 
             if shortcut.isTakenBySystem {
-                endRecording()
-                mode = .ready
+                endRecording(.ready)
 
                 NSAlert.showModal(
                     for: self.window,
@@ -226,12 +218,11 @@ extension KeyboardShortcuts {
             }
 
             saveShortcut(shortcut)
-            return false
+            return true
         }
-        
-        // can't user characters in here, but we have the access to modifiers
+
         override func flagsChanged(with event: NSEvent) {
-            guard active else { return }
+            guard mode.isActive else { return }
             print("<< flagsChanged, modifiers: \(event.modifiers)")
             if event.modifiers.isEmpty {
                 mode = .preRecording
@@ -239,7 +230,6 @@ extension KeyboardShortcuts {
                 mode = .recording(event.modifiers.description)
             }
         }
-
 
         private func onlyEscapePressed(_ event: NSEvent) -> Bool {
             event.modifiers.isEmpty && event.keyCode == kVK_Escape
@@ -257,32 +247,33 @@ extension KeyboardShortcuts {
         private func onlyDeletePressed(_ event: NSEvent) -> Bool {
             event.modifiers.isEmpty && (
                 event.specialKey == .delete
-                || event.specialKey == .deleteForward
-                || event.specialKey == .backspace
+                    || event.specialKey == .deleteForward
+                    || event.specialKey == .backspace
             )
         }
 
-        override func becomeFirstResponder() -> Bool {
-            let shouldBecomeFirstResponder = super.becomeFirstResponder()
-
-            guard shouldBecomeFirstResponder else {
-                return shouldBecomeFirstResponder
-            }
-
-            KeyboardShortcuts.isPaused = true // The position here matters.
-            return shouldBecomeFirstResponder
-        }
-        
         private func saveShortcut(_ shortcut: Shortcut?) {
-            endRecording()
-            if let shortcut {
-                mode = .set(shortcut.description)
-            } else {
-                oldSet = nil
-                mode = .ready
+            endRecording {
+                if let shortcut {
+                    return .set(shortcut.description)
+                } else {
+                    self.oldSet = nil
+                    return .ready
+                }
             }
+
             setShortcut(shortcut, for: shortcutName)
             onChange?(shortcut)
+        }
+
+        private func endRecording(_ newMode: () -> RecorderMode) {
+            endRecording(newMode())
+        }
+
+        private func endRecording(_ newMode: RecorderMode) {
+            KeyboardShortcuts.isEnabled = true
+            blur()
+            self.mode = newMode
         }
     }
 }

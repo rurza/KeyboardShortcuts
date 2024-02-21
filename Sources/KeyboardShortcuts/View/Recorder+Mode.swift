@@ -13,5 +13,14 @@ public extension KeyboardShortcuts {
         case preRecording
         case recording(String)
         case set(String)
+
+        var isActive: Bool {
+            switch self {
+            case .preRecording, .recording:
+                return true
+            case .ready, .set:
+                return false
+            }
+        }
     }
 }
