@@ -73,10 +73,53 @@ extension KeyboardShortcuts {
                     onChange: onChange
                 )
                 .frame(width: 0, height: 0)
-                label
+                HStack {
+                    HStack {
+                        if mode == .preRecording {
+                            BlinkingLight()
+                                .matchedGeometryEffect(id: GeometryID.dot, in: namespace)
+                                .transition(.asymmetric(insertion: .slide, removal: .identity))
+                        }
+
+                        Text(mode == .ready ? "RECORD" : "REC")
+                            .font(.system(size: 11))
+                            .fontWeight(.bold)
+                            .kerning(1)
+                            .animation(nil, value: mode)
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(width: 80, height: 26)
+                    .clipShape(.capsule)
+                    .overlay(
+                        Capsule()
+                            .stroke(.secondary, lineWidth: 0.5)
+                    )
+                    .matchedGeometryEffect(id: GeometryID.pill, in: namespace)
+                    .contentShape(Capsule())
+                    .onTapGesture {
+                        if !mode.isActive {
+                            isActive = true
+                        }
+                    }
+                    Button(
+                        action: { isActive = false },
+                        label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .fontWeight(.bold)
+                                .imageScale(.large)
+                                .foregroundColor(Color.secondary)
+                        }
+                    )
+                    .buttonStyle(.plain)
+                    .opacity(mode == .preRecording ? 1 : 0)
+                    .scaleEffect(mode == .preRecording ? 1 : 0.8)
+                    .offset(x: mode == .ready ? -10 : 0)
+                    .animation(mode == .preRecording ? .spring : .easeInOut(duration: 0.1), value: mode)
+                    .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
+                }
             }
 
-            .animation(.default, value: mode)
+            .animation(.spring, value: mode)
         }
 
         @ViewBuilder
