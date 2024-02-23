@@ -22,5 +22,14 @@ public extension KeyboardShortcuts {
                 return false
             }
         }
+
+        var thereIsNoKeys: Bool {
+            switch self {
+            case .ready, .preRecording:
+                return true
+            case .recording, .set:
+                return false
+            }
+        }
     }
 }

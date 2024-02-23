@@ -1,50 +1,6 @@
 import SwiftUI
 
 extension KeyboardShortcuts {
-    struct _Recorder: NSViewRepresentable {
-        // swiftlint:disable:this type_name
-        typealias NSViewType = RecorderContainerView
-
-        let name: Name
-        let isActive: Bool
-        let modeChange: (RecorderMode) -> Void
-        let onChange: ((_ shortcut: Shortcut?) -> Void)?
-
-        public func makeNSView(context: Context) -> NSViewType {
-            print(#function)
-            let view = RecorderContainerView(for: name, onChange: onChange)
-            view.delegate = context.coordinator
-            return view
-        }
-
-        public func updateNSView(_ nsView: NSViewType, context: Context) {
-            print(#function)
-            context.coordinator.parent = self
-            nsView.shortcutName = name
-            if isActive {
-                nsView.startRecording()
-            } else {
-                nsView.stopRecording()
-            }
-        }
-
-        public func makeCoordinator() -> Coordinator {
-            Coordinator(self)
-        }
-
-        public final class Coordinator: RecorderContainerDelegate {
-            var parent: _Recorder
-
-            init(_ parent: _Recorder) {
-                self.parent = parent
-            }
-
-            func recorderModeDidChange(_ mode: KeyboardShortcuts.RecorderMode) {
-                self.parent.modeChange(mode)
-            }
-        }
-    }
-
     public struct Recorder: View {
         private let name: Name
         private let onChange: ((Shortcut?) -> Void)?
@@ -59,12 +15,17 @@ extension KeyboardShortcuts {
         @State private var mode: RecorderMode = .ready
         @State private var size: CGSize = .zero
 
+        static let backgroundLight = Color(red: 239/255, green: 238/255, blue: 240/255)
+        static let backgroundDark = Color(red: 0.21, green: 0.19, blue: 0.23, opacity: 1.00)
+
         public var body: some View {
             ZStack {
                 _Recorder(
                     name: name,
                     isActive: isActive,
                     modeChange: { mode in
+                        guard mode != self.mode else { return }
+                        print("mode did change ", mode, name)
                         self.mode = mode
                         if !mode.isActive {
                             isActive = false
@@ -75,91 +36,122 @@ extension KeyboardShortcuts {
                 .frame(width: 0, height: 0)
                 HStack {
                     HStack {
-                        if mode == .preRecording {
-                            BlinkingLight()
-                                .matchedGeometryEffect(id: GeometryID.dot, in: namespace)
-                                .transition(.asymmetric(insertion: .slide, removal: .identity))
+                        switch mode {
+                        case .ready:
+                            Text("RECORD")
+                                .commandStyle()
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .trailing).combined(with: .opacity)
+                                ))
+                        case .preRecording:
+                            HStack {
+                                BlinkingLight()
+                                Text("REC")
+                                    .commandStyle()
+                                    .foregroundStyle(Color.secondary)
+                            }
+                            .transition(.preRecording)
+
+                        case .recording(let shortcut):
+                            let shortcutArray = shortcut.map { String($0) }
+                            HStack(spacing: 2) {
+                                ForEach(shortcutArray, id: \.self) { symbol in
+                                    ShortcutSymbol(symbol: symbol)
+                                        .matchedGeometryEffect(id: GeometryID.symbol(symbol), in: namespace)
+                                        .transition(
+                                            .move(edge: .leading)
+                                            .combined(with: .offset(x: -60))
+                                            .combined(with: .opacity)
+                                        )
+                                }
+                            }
+                        case .set(let shortcut):
+                            HStack(spacing: 2) {
+                                let shortcutArray = shortcut.map { String($0) }
+
+                                ForEach(shortcutArray, id: \.self) { symbol in
+                                    if symbol.allSatisfy(\.isASCII) {
+                                        Text("+")
+                                            .shortcutStyle()
+                                            .frame(width: 18)
+                                    }
+                                    ShortcutSymbol(symbol: symbol)
+                                        .matchedGeometryEffect(id: GeometryID.symbol(symbol), in: namespace)
+                                        .transition(
+                                            .move(edge: .leading)
+                                            .combined(with: .offset(x: -30)
+                                                .combined(with: .opacity))
+                                        )
+                                }
+                            }
+                            .fixedSize(horizontal: true, vertical: false)
                         }
 
-                        Text(mode == .ready ? "RECORD" : "REC")
-                            .font(.system(size: 11))
-                            .fontWeight(.bold)
-                            .kerning(1)
-                            .animation(nil, value: mode)
                     }
-                    .padding(.horizontal, 8)
-                    .frame(width: 80, height: 26)
-                    .clipShape(.capsule)
-                    .overlay(
-                        Capsule()
-                            .stroke(.secondary, lineWidth: 0.5)
-                    )
+                    .padding(.horizontal, mode.thereIsNoKeys ? 8 : 2)
+                    .frame(height: 26)
+                    .frame(minWidth: 70)
+                    .background(Self.backgroundLight)
+                    .modify { view in
+                        if mode.thereIsNoKeys {
+                            view
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(.secondary, lineWidth: 0.5).opacity(0.3))
+                                .contentShape(Capsule())
+                        } else {
+                            view
+                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
+                                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                    }
                     .matchedGeometryEffect(id: GeometryID.pill, in: namespace)
-                    .contentShape(Capsule())
                     .onTapGesture {
                         if !mode.isActive {
+                            print("on tap gesture ", name)
                             isActive = true
                         }
                     }
                     Button(
-                        action: { isActive = false },
+                        action: {
+                            if mode.isActive {
+                                isActive = false
+                            } else if case .set = mode {
+                                KeyboardShortcuts.reset([name])
+                            }
+                        },
                         label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Image(systemName: helperImageName)
                                 .fontWeight(.bold)
                                 .imageScale(.large)
                                 .foregroundColor(Color.secondary)
                         }
                     )
                     .buttonStyle(.plain)
-                    .opacity(mode == .preRecording ? 1 : 0)
-                    .scaleEffect(mode == .preRecording ? 1 : 0.8)
+                    .opacity(mode == .ready ? 0 : 1)
+                    .scaleEffect(mode == .ready ? 0.8 : 1)
                     .offset(x: mode == .ready ? -10 : 0)
-                    .animation(mode == .preRecording ? .spring : .easeInOut(duration: 0.1), value: mode)
                     .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
                 }
             }
-
-            .animation(.spring, value: mode)
+            .animation(.bouncy, value: mode)
         }
 
-        @ViewBuilder
-        var label: some View {
+        var helperImageName: String {
             switch mode {
-            case .ready:
-                RecorderReadyLabel(namespace: namespace)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        isActive.toggle()
-                    }
-            case .preRecording:
-                HStack {
-                    PreRecordingLabel(namespace: namespace)
-                    Button(
-                        action: { isActive = false },
-                        label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .imageScale(.large)
-                        }
-                    )
-                    .buttonStyle(.plain)
-                    .transition(.push(from: .trailing))
-                    .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
-                }
-
-            case .recording(let string):
-                Text(string)
-            case .set(let string):
-                Text(string)
+            case .ready, .preRecording, .recording:
+                return "xmark.circle.fill"
+            case .set:
+                return "trash.circle.fill"
             }
         }
-
     }
 
     enum GeometryID: Hashable {
         case pill
-        case label
-        case dot
         case cancel
+        case symbol(String)
     }
 
     private struct ContentSize: PreferenceKey {
@@ -172,10 +164,21 @@ extension KeyboardShortcuts {
     }
 }
 
-#if DEBG
+extension View {
+    func commandStyle() -> some View {
+        self
+            .font(.system(size: 11))
+            .fontWeight(.medium)
+            .kerning(1)
+            .foregroundStyle(Color.secondary)
+    }
+}
+
+#if DEBUG
 #Preview {
     KeyboardShortcuts.Recorder(
         for: .init("test")
     )
+    .padding()
 }
 #endif

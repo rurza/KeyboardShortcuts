@@ -20,15 +20,6 @@ final class AppState: ObservableObject {
 		}
 			.setShortcut(for: .testShortcut2)
 
-		testMenu.addCallbackItem("Shortcut 3") { [weak self] in
-			self?.alert(3)
-		}
-			.setShortcut(for: .testShortcut3)
-
-		testMenu.addCallbackItem("Shortcut 4") { [weak self] in
-			self?.alert(4)
-		}
-			.setShortcut(for: .testShortcut4)
 	}
 
 	private func alert(_ number: Int) {

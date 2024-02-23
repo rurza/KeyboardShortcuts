@@ -36,10 +36,12 @@ extension NSTextField {
 
 extension NSView {
 	func focus() {
+        print(#function)
 		window?.makeFirstResponder(self)
 	}
 
 	func blur() {
+        print(#function)
 		window?.makeFirstResponder(nil)
 	}
 }

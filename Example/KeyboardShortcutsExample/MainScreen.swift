@@ -1,134 +1,77 @@
-import SwiftUI
 import KeyboardShortcuts
+import SwiftUI
 
 extension KeyboardShortcuts.Name {
-	static let testShortcut1 = Self("testShortcut1")
-	static let testShortcut2 = Self("testShortcut2")
-	static let testShortcut3 = Self("testShortcut3")
-	static let testShortcut4 = Self("testShortcut4")
-}
-
-private struct DynamicShortcutRecorder: View {
-	@FocusState private var isFocused: Bool
-
-	@Binding var name: KeyboardShortcuts.Name
-	@Binding var isPressed: Bool
-
-	var body: some View {
-		HStack(alignment: .firstTextBaseline) {
-			KeyboardShortcuts.Recorder(for: name)
-				.focused($isFocused)
-				.padding(.trailing, 10)
-			Text("Pressed? \(isPressed ? "👍" : "👎")")
-				.frame(width: 100, alignment: .leading)
-		}
-			.onChange(of: name) { _ in
-				isFocused = true
-			}
-	}
-}
-
-private struct DynamicShortcut: View {
-	private struct Shortcut: Hashable, Identifiable {
-		var id: String
-		var name: KeyboardShortcuts.Name
-	}
-
-	private static let shortcuts = [
-		Shortcut(id: "Shortcut3", name: .testShortcut3),
-		Shortcut(id: "Shortcut4", name: .testShortcut4)
-	]
-
-	@State private var shortcut = Self.shortcuts.first!
-	@State private var isPressed = false
-
-	var body: some View {
-		VStack {
-			Text("Dynamic Recorder")
-				.bold()
-				.padding(.bottom, 10)
-			VStack {
-				Picker("Select shortcut:", selection: $shortcut) {
-					ForEach(Self.shortcuts) {
-						Text($0.id)
-							.tag($0)
-					}
-				}
-				Divider()
-				DynamicShortcutRecorder(name: $shortcut.name, isPressed: $isPressed)
-			}
-		}
-			.frame(maxWidth: 300)
-			.padding()
-			.padding(.bottom, 20)
-			.onChange(of: shortcut) { [oldValue = shortcut] in
-				onShortcutChange(oldValue: oldValue, newValue: $0)
-			}
-	}
-
-	private func onShortcutChange(oldValue: Shortcut, newValue: Shortcut) {
-		KeyboardShortcuts.disable(oldValue.name)
-
-		KeyboardShortcuts.onKeyDown(for: newValue.name) {
-			isPressed = true
-		}
-
-		KeyboardShortcuts.onKeyUp(for: newValue.name) {
-			isPressed = false
-		}
-	}
+    static let testShortcut1 = Self("testShortcut1")
+    static let testShortcut2 = Self("testShortcut2")
+    static let testShortcut3 = Self("testShortcut3")
 }
 
 private struct DoubleShortcut: View {
-	@State private var isPressed1 = false
-	@State private var isPressed2 = false
+    @State private var isPressed1 = false
+    @State private var isPressed2 = false
+    @State private var isPressed3 = false
 
-	var body: some View {
-		Form {
-			KeyboardShortcuts.Recorder(for: .testShortcut1)
-				.overlay(alignment: .trailing) {
-					Text("Pressed? \(isPressed1 ? "👍" : "👎")")
-						.offset(x: 90)
-				}
-//            KeyboardShortcuts.NewRecorder(for: .testShortcut2)
-//				.overlay(alignment: .trailing) {
-//					Text("Pressed? \(isPressed2 ? "👍" : "👎")")
-//						.offset(x: 90)
-//				}
-			Spacer()
-			Button("Reset All") {
-				KeyboardShortcuts.reset(.testShortcut1, .testShortcut2)
-			}
-		}
-			.offset(x: -40)
-			.frame(maxWidth: 300)
-			.padding()
-			.padding()
-			.onKeyboardShortcut(.testShortcut1) {
-				isPressed1 = $0 == .keyDown
-			}
-			.onKeyboardShortcut(.testShortcut2, type: .keyDown) {
-				isPressed2 = true
-			}
-			.task {
-				KeyboardShortcuts.onKeyUp(for: .testShortcut2) {
-					isPressed2 = false
-				}
-			}
-	}
+    var body: some View {
+        Form {
+            HStack {
+                KeyboardShortcuts.Recorder(for: .testShortcut1)
+                Spacer()
+                Text("Pressed? \(isPressed1 ? "👍" : "👎")")
+            }
+
+            HStack {
+                KeyboardShortcuts.Recorder(for: .testShortcut2)
+                Spacer()
+                Text("Pressed? \(isPressed2 ? "👍" : "👎")")
+            }
+            .padding()
+            .background(Color(red: 249/255, green: 248/255, blue: 250/255))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 4)
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(.secondary.opacity(0.4), lineWidth: 0.5)
+            }
+            GroupBox {
+                HStack {
+                    KeyboardShortcuts.Recorder(for: .testShortcut3)
+                    Spacer()
+                    Text("Pressed? \(isPressed3 ? "👍" : "👎")")
+                }
+            }
+            .padding(.vertical)
+            Spacer()
+            Button("Reset All") {
+                KeyboardShortcuts.reset(.testShortcut1, .testShortcut2, .testShortcut3)
+            }
+        }
+        .padding()
+        .onKeyboardShortcut(.testShortcut1) {
+            isPressed1 = $0 == .keyDown
+        }
+        .onKeyboardShortcut(.testShortcut2, type: .keyDown) {
+            isPressed2 = true
+        }
+        .onKeyboardShortcut(.testShortcut3) {
+            isPressed2 = $0 == .keyDown
+        }
+        .task {
+            KeyboardShortcuts.onKeyUp(for: .testShortcut2) {
+                isPressed2 = false
+            }
+        }
+    }
 }
 
 struct MainScreen: View {
-	var body: some View {
-		VStack {
-			DoubleShortcut()
-			Divider()
-			DynamicShortcut()
-		}
-			.frame(width: 400, height: 320)
-	}
+    var body: some View {
+        VStack {
+            DoubleShortcut()
+        }
+        .frame(width: 500, height: 320)
+    }
 }
 
 #Preview {
-	MainScreen()
+    MainScreen()
 }
