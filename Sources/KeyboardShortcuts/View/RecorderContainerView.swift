@@ -74,11 +74,6 @@ final class RecorderContainerView: NSView {
     }
 
     func stopRecording() {
-        restoreState()
-//        blur()
-    }
-
-    private func restoreState() {
         if let oldSet {
             mode = .set(oldSet)
         } else if case .preRecording = mode {
@@ -89,7 +84,6 @@ final class RecorderContainerView: NSView {
     }
 
     private func setStringValue(name: KeyboardShortcuts.Name) {
-        print(#function)
         if let shortcut = KeyboardShortcuts.getShortcut(for: name).map({ "\($0)" }) {
             mode = .set(shortcut)
         } else {
@@ -158,13 +152,12 @@ final class RecorderContainerView: NSView {
             return shouldBecomeFirstResponder
         }
 
-        KeyboardShortcuts.isEnabled = false // The position here matters.
+        KeyboardShortcuts.isPaused = true
         return shouldBecomeFirstResponder
     }
 
     override func resignFirstResponder() -> Bool {
-        print(#function, self.shortcutName)
-        restoreState()
+        stopRecording()
         return super.resignFirstResponder()
     }
 
@@ -235,7 +228,6 @@ final class RecorderContainerView: NSView {
 
     override func flagsChanged(with event: NSEvent) {
         guard mode.isActive else { return }
-        print("<< flagsChanged, modifiers: \(event.modifiers)")
         if event.modifiers.isEmpty {
             mode = .preRecording
         } else {
@@ -283,13 +275,13 @@ final class RecorderContainerView: NSView {
     }
 
     private func endRecording(_ newMode: KeyboardShortcuts.RecorderMode) {
-        KeyboardShortcuts.isEnabled = true
+        KeyboardShortcuts.isPaused = false
         blur()
         self.mode = newMode
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(shortcutsNameChangeObserver)
-        NotificationCenter.default.removeObserver(windowDidResignKeyObserver)
+        NotificationCenter.default.removeObserver(shortcutsNameChangeObserver as Any)
+        NotificationCenter.default.removeObserver(windowDidResignKeyObserver as Any)
     }
 }

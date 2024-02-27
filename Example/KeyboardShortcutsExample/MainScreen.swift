@@ -21,12 +21,12 @@ private struct DoubleShortcut: View {
             }
 
             HStack {
-                KeyboardShortcuts.Recorder(for: .testShortcut2)
-                Spacer()
                 Text("Pressed? \(isPressed2 ? "👍" : "👎")")
+                Spacer()
+                KeyboardShortcuts.Recorder(for: .testShortcut2)
             }
             .padding()
-            .background(Color(red: 249/255, green: 248/255, blue: 250/255))
+            .background(Color(nsColor: .windowBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 4)
             .overlay {

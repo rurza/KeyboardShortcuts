@@ -11,54 +11,32 @@ struct ShortcutSymbol: View {
     let symbol: String
     @Environment(\.colorScheme) private var colorScheme
 
-    static let backgroundLight = Color(red: 249/255, green: 248/255, blue: 250/55)
-    static let backgroundDark = Color(red: 0.21, green: 0.19, blue: 0.23, opacity: 1.00)
-
     var body: some View {
         Text(symbol)
             .shortcutStyle()
             .foregroundColor(.primary)
             .frame(width: 22, height: 22)
-            .modify {
-                if colorScheme == .dark {
-                    $0.background {
-                        ZStack {
-                            Self.backgroundDark
-                            VStack {
-                                Color.white.opacity(0.1)
-                                    .frame(height: 3)
-                                    .blur(radius: 3)
-                                Spacer()
-                            }
-                            VStack {
-                                Spacer()
-                                Color.black.opacity(0.9)
-                                    .frame(height: 2)
-                                    .blur(radius: 2)
-                            }
-                        }
+            .background {
+                ZStack {
+                    Color(nsColor: .windowBackgroundColor)
+                    VStack {
+                        Color.white.opacity(colorScheme == .dark ? 0.2 : 0.9)
+                            .frame(height: 2)
+                            .blur(radius: 2)
+                        Spacer()
                     }
-                } else {
-                    $0.background {
-                        ZStack {
-                            Self.backgroundLight
-                            VStack {
-                                Color.white
-                                    .frame(height: 4)
-                                    .blur(radius: 2)
-                                Spacer()
-                            }
-                            VStack {
-                                Spacer()
-                                Color.black.opacity(0.13)
-                                    .frame(height: 1)
-                                    .blur(radius: 2)
-                            }
-                        }
+                    VStack {
+                        Spacer()
+                        Color.black.opacity(colorScheme == .dark ? 0.7 : 0.1)
+                            .frame(height: 1)
+                            .blur(radius: 1)
                     }
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+            }
             .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: 2)
     }
 }
@@ -67,8 +45,7 @@ extension View {
     func shortcutStyle() -> some View {
         self
             .font(.system(size: 13))
-            .fontWeight(.medium)
-
+            .fontWeight(.regular)
     }
 }
 
@@ -76,5 +53,10 @@ extension View {
 #Preview {
     ShortcutSymbol(symbol: "⌘")
         .padding()
+}
+#Preview("dark mode") {
+    ShortcutSymbol(symbol: "␛")
+        .padding()
+        .preferredColorScheme(.dark)
 }
 #endif

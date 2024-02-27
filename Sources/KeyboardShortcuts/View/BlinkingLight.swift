@@ -18,8 +18,8 @@ struct BlinkingLight: View {
                 ZStack { // shadow
                     Circle()
                         .foregroundStyle(Color.black.opacity(0.2))
-                        .offset(y: 2)
-                        .blur(radius: 2)
+                        .offset(y: 1)
+                        .blur(radius: 1)
                     Circle()
                         .blendMode(.destinationOut)
                         .foregroundStyle(Color.black)

@@ -15,9 +15,6 @@ extension KeyboardShortcuts {
         @State private var mode: RecorderMode = .ready
         @State private var size: CGSize = .zero
 
-        static let backgroundLight = Color(red: 239/255, green: 238/255, blue: 240/255)
-        static let backgroundDark = Color(red: 0.21, green: 0.19, blue: 0.23, opacity: 1.00)
-
         public var body: some View {
             ZStack {
                 _Recorder(
@@ -35,7 +32,15 @@ extension KeyboardShortcuts {
                 )
                 .frame(width: 0, height: 0)
                 HStack {
-                    HStack {
+                    ZStack {
+                        HStack {
+                            BlinkingLight()
+                            Text("REC")
+                                .commandStyle()
+                                .foregroundStyle(Color.secondary)
+                        }
+                        .opacity(mode == .preRecording ? 1 : 0)
+                        .offset(x: preRecordingLabelXOffset)
                         switch mode {
                         case .ready:
                             Text("RECORD")
@@ -45,15 +50,9 @@ extension KeyboardShortcuts {
                                     removal: .move(edge: .trailing).combined(with: .opacity)
                                 ))
                         case .preRecording:
-                            HStack {
-                                BlinkingLight()
-                                Text("REC")
-                                    .commandStyle()
-                                    .foregroundStyle(Color.secondary)
-                            }
-                            .transition(.preRecording)
+                            EmptyView()
 
-                        case .recording(let shortcut):
+                        case .recording(let shortcut), .set(let shortcut):
                             let shortcutArray = shortcut.map { String($0) }
                             HStack(spacing: 2) {
                                 ForEach(shortcutArray, id: \.self) { symbol in
@@ -61,81 +60,55 @@ extension KeyboardShortcuts {
                                         .matchedGeometryEffect(id: GeometryID.symbol(symbol), in: namespace)
                                         .transition(
                                             .move(edge: .leading)
-                                            .combined(with: .offset(x: -60))
                                             .combined(with: .opacity)
                                         )
                                 }
                             }
-                        case .set(let shortcut):
-                            HStack(spacing: 2) {
-                                let shortcutArray = shortcut.map { String($0) }
-
-                                ForEach(shortcutArray, id: \.self) { symbol in
-                                    if symbol.allSatisfy(\.isASCII) {
-                                        Text("+")
-                                            .shortcutStyle()
-                                            .frame(width: 18)
-                                    }
-                                    ShortcutSymbol(symbol: symbol)
-                                        .matchedGeometryEffect(id: GeometryID.symbol(symbol), in: namespace)
-                                        .transition(
-                                            .move(edge: .leading)
-                                            .combined(with: .offset(x: -30)
-                                                .combined(with: .opacity))
-                                        )
-                                }
-                            }
-                            .fixedSize(horizontal: true, vertical: false)
+                            .id(GeometryID.shortcut)
+                            .transition(
+                                .offset(x: -30)
+                                .combined(with: .opacity)
+                            )
+                            .matchedGeometryEffect(id: GeometryID.shortcut, in: namespace)
                         }
-
                     }
                     .padding(.horizontal, mode.thereIsNoKeys ? 8 : 2)
                     .frame(height: 26)
                     .frame(minWidth: 70)
-                    .background(Self.backgroundLight)
-                    .modify { view in
-                        if mode.thereIsNoKeys {
-                            view
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(.secondary, lineWidth: 0.5).opacity(0.3))
-                                .contentShape(Capsule())
-                        } else {
-                            view
-                                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
-                                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        }
-                    }
-                    .matchedGeometryEffect(id: GeometryID.pill, in: namespace)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
+                        .contentShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
                     .onTapGesture {
                         if !mode.isActive {
-                            print("on tap gesture ", name)
                             isActive = true
                         }
                     }
-                    Button(
-                        action: {
-                            if mode.isActive {
-                                isActive = false
-                            } else if case .set = mode {
-                                KeyboardShortcuts.reset([name])
+                    .matchedGeometryEffect(id: GeometryID.pill, in: namespace)
+
+                    if mode != .ready {
+                        Button(
+                            action: {
+                                if mode.isActive {
+                                    isActive = false
+                                } else if case .set = mode {
+                                    KeyboardShortcuts.reset([name])
+                                }
+                            },
+                            label: {
+                                Image(systemName: helperImageName)
+                                    .fontWeight(.bold)
+                                    .imageScale(.large)
+                                    .foregroundColor(Color.secondary)
                             }
-                        },
-                        label: {
-                            Image(systemName: helperImageName)
-                                .fontWeight(.bold)
-                                .imageScale(.large)
-                                .foregroundColor(Color.secondary)
-                        }
-                    )
-                    .buttonStyle(.plain)
-                    .opacity(mode == .ready ? 0 : 1)
-                    .scaleEffect(mode == .ready ? 0.8 : 1)
-                    .offset(x: mode == .ready ? -10 : 0)
-                    .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
+                        )
+                        .buttonStyle(.plain)
+                        .matchedGeometryEffect(id: GeometryID.cancel, in: namespace)
+                        .transition(.scale.combined(with: .opacity).combined(with: .offset(x: -30)))
+                    }
                 }
             }
-            .animation(.bouncy, value: mode)
+            .animation(.spring(duration: 0.4), value: mode)
         }
 
         var helperImageName: String {
@@ -146,12 +119,26 @@ extension KeyboardShortcuts {
                 return "trash.circle.fill"
             }
         }
+
+        var preRecordingLabelXOffset: CGFloat {
+            switch mode {
+            case .ready:
+                return -100
+            case .preRecording:
+                return 0
+            case .recording:
+                return 120
+            case .set:
+                return -120
+            }
+        }
     }
 
     enum GeometryID: Hashable {
         case pill
         case cancel
         case symbol(String)
+        case shortcut
     }
 
     private struct ContentSize: PreferenceKey {

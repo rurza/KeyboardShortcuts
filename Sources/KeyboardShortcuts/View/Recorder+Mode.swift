@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Recorder+Mode.swift
 //  
 //
 //  Created by Adam Różyński on 18/02/2024.
