@@ -5,15 +5,16 @@ extension KeyboardShortcuts {
         private let name: Name
         private let onChange: ((Shortcut?) -> Void)?
         @Namespace private var namespace
+        @Environment(\.isEnabled) var isEnabled
+
+        @State private var isActive = false
+        @State private var mode: RecorderMode = .ready
+        @State private var size: CGSize = .zero
 
         public init(for name: KeyboardShortcuts.Name, onChange: ((KeyboardShortcuts.Shortcut?) -> Void)? = nil) {
             self.name = name
             self.onChange = onChange
         }
-
-        @State private var isActive = false
-        @State private var mode: RecorderMode = .ready
-        @State private var size: CGSize = .zero
 
         public var body: some View {
             ZStack {
@@ -75,7 +76,7 @@ extension KeyboardShortcuts {
                     .padding(.horizontal, mode.thereIsNoKeys ? 8 : 2)
                     .frame(height: 26)
                     .frame(minWidth: 70)
-                    .background(Color(nsColor: .controlBackgroundColor))
+                    .background(Color(nsColor: isEnabled ? .controlBackgroundColor : .windowBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
                         .contentShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
