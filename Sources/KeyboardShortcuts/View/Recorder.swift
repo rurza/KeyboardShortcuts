@@ -1,3 +1,5 @@
+#if os(macOS)
+
 import SwiftUI
 
 extension KeyboardShortcuts {
@@ -169,4 +171,6 @@ extension View {
     )
     .padding()
 }
+#endif
+
 #endif

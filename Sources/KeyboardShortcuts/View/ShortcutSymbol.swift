@@ -4,6 +4,7 @@
 //
 //  Created by Adam Różyński on 22/02/2024.
 //
+#if os(macOS)
 
 import SwiftUI
 
@@ -59,4 +60,6 @@ extension View {
         .padding()
         .preferredColorScheme(.dark)
 }
+#endif
+
 #endif

@@ -4,6 +4,7 @@
 //
 //  Created by Adam Różyński on 22/02/2024.
 //
+#if os(macOS)
 
 import SwiftUI
 
@@ -48,3 +49,5 @@ struct _Recorder: NSViewRepresentable {
         }
     }
 }
+
+#endif

@@ -4,6 +4,7 @@
 //
 //  Created by Adam Różyński on 18/02/2024.
 //
+#if os(macOS)
 
 import Foundation
 
@@ -33,3 +34,5 @@ public extension KeyboardShortcuts {
         }
     }
 }
+
+#endif

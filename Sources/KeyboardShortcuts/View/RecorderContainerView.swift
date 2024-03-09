@@ -1,3 +1,5 @@
+#if os(macOS)
+
 import AppKit
 import Carbon.HIToolbox
 
@@ -285,3 +287,5 @@ final class RecorderContainerView: NSView {
         NotificationCenter.default.removeObserver(windowDidResignKeyObserver as Any)
     }
 }
+
+#endif

@@ -4,9 +4,9 @@
 //
 //  Created by Adam Różyński on 22/02/2024.
 //
+#if os(macOS)
 
 import SwiftUI
-
 
 struct BlinkingLight: View {
     @State private var lightBlinkingOpacity = 1.0
@@ -79,3 +79,5 @@ struct BlinkingLight: View {
     BlinkingLight()
         .padding()
 }
+
+#endif
