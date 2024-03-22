@@ -17,9 +17,17 @@ struct ShortcutSymbol: View {
             .shortcutStyle()
             .foregroundColor(.primary)
             .frame(width: 22, height: 22)
+            .visualEffect(.adaptive(.titlebar))
             .background {
                 ZStack {
-                    Color(nsColor: .windowBackgroundColor)
+                    Group {
+                        if colorScheme == .dark {
+                            Color.black
+                        } else {
+                            Color.white
+                        }
+                    }
+                    .opacity(colorScheme == .dark ? 0.2 : 0.6)
                     VStack {
                         Color.white.opacity(colorScheme == .dark ? 0.2 : 0.9)
                             .frame(height: 2)

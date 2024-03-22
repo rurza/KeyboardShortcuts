@@ -25,7 +25,6 @@ extension KeyboardShortcuts {
                     isActive: isActive,
                     modeChange: { mode in
                         guard mode != self.mode else { return }
-                        print("mode did change ", mode, name)
                         self.mode = mode
                         if !mode.isActive {
                             isActive = false
@@ -78,7 +77,9 @@ extension KeyboardShortcuts {
                     .padding(.horizontal, mode.thereIsNoKeys ? 8 : 2)
                     .frame(height: 26)
                     .frame(minWidth: 70)
-                    .background(Color(nsColor: isEnabled ? .controlBackgroundColor : .windowBackgroundColor))
+                    
+                    .visualEffect(.adaptive(.windowBackground))
+//                    .background(Color(nsColor: isEnabled ? .controlBackgroundColor : .windowBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
                         .contentShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))

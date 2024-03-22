@@ -25,13 +25,7 @@ private struct DoubleShortcut: View {
                 Spacer()
                 KeyboardShortcuts.Recorder(for: .testShortcut2)
             }
-            .padding()
-            .background(Color(nsColor: .windowBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 4)
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(.secondary.opacity(0.4), lineWidth: 0.5)
-            }
+
             GroupBox {
                 HStack {
                     KeyboardShortcuts.Recorder(for: .testShortcut3)
