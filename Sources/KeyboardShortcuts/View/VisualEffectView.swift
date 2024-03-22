@@ -1,9 +1,11 @@
 //
-//  File.swift
+//  VisualEffectView.swift
 //  
 //
 //  Created by Jim Dovey on 11/2/19.
 //
+
+#if os(macOS)
 
 import SwiftUI
 
@@ -340,3 +342,5 @@ extension View {
         preference(key: VisualEffectPreferenceKey.self, value: effect)
     }
 }
+
+#endif
