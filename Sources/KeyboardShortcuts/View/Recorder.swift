@@ -79,7 +79,6 @@ extension KeyboardShortcuts {
                     .frame(minWidth: 70)
                     
                     .visualEffect(.adaptive(.windowBackground))
-//                    .background(Color(nsColor: isEnabled ? .controlBackgroundColor : .windowBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous).stroke(.secondary, lineWidth: 0.5).opacity(0.3))
                         .contentShape(RoundedRectangle(cornerRadius: mode.thereIsNoKeys ? 13 : 6, style: .continuous))
@@ -113,6 +112,16 @@ extension KeyboardShortcuts {
                 }
             }
             .animation(.spring(duration: 0.4), value: mode)
+            .help(tooltip)
+        }
+
+        var tooltip: String {
+            switch mode {
+            case .ready, .set:
+                return "record_shortcut".localized
+            case .preRecording, .recording:
+                return "press_shortcut".localized
+            }
         }
 
         var helperImageName: String {
