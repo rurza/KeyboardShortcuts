@@ -80,6 +80,7 @@ enum CarbonKeyboardShortcuts {
 			error == noErr,
 			let handler
 		else {
+			KeyboardShortcuts.logger.notice("InstallEventHandler failed with OSStatus \(error, privacy: .public)")
 			return
 		}
 
@@ -147,6 +148,7 @@ enum CarbonKeyboardShortcuts {
 			registerError == noErr,
 			let carbonHotKey = eventHotKey
 		else {
+			KeyboardShortcuts.logger.notice("RegisterEventHotKey failed with OSStatus \(registerError, privacy: .public) for \(shortcut.logDescription, privacy: .public); the shortcut will not work")
 			return
 		}
 
@@ -181,6 +183,7 @@ enum CarbonKeyboardShortcuts {
 				error == noErr,
 				let eventHotKey
 			else {
+				KeyboardShortcuts.logger.notice("RegisterEventHotKey failed with OSStatus \(error, privacy: .public) while re-registering \(hotKey.shortcut.logDescription, privacy: .public); the shortcut is dropped until it is registered again")
 				hotKeys.removeValue(forKey: hotKey.carbonHotKeyId)
 				continue
 			}
@@ -250,6 +253,7 @@ enum CarbonKeyboardShortcuts {
 			eventHotKeyId.signature == hotKeySignature,
 			let hotKey = hotKeys[Int(eventHotKeyId.id)]
 		else {
+			KeyboardShortcuts.logger.notice("Received a hot key event with no registered hot key (signature: \(eventHotKeyId.signature, privacy: .public), id: \(eventHotKeyId.id, privacy: .public))")
 			return OSStatus(eventNotHandledErr)
 		}
 
