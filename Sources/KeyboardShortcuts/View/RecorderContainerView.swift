@@ -19,6 +19,8 @@ final class RecorderContainerView: NSView {
             }
         }
         didSet {
+            updatePause(reason: "recorder mode changed to \(mode)")
+
             // the delegate method will trigger UI update
             DispatchQueue.main.async {
                 self.delegate?.recorderModeDidChange(self.mode)
@@ -27,6 +29,8 @@ final class RecorderContainerView: NSView {
     }
 
     var delegate: RecorderContainerDelegate?
+    /// Tracked here because `window.firstResponder` isn't updated yet inside `becomeFirstResponder()` and `resignFirstResponder()`.
+    private var isFirstResponder = false
     private var shortcutsNameChangeObserver: NSObjectProtocol?
     private var windowDidResignKeyObserver: NSObjectProtocol?
 
@@ -112,6 +116,7 @@ final class RecorderContainerView: NSView {
     override func viewDidMoveToWindow() {
         guard let window else {
             windowDidResignKeyObserver = nil
+            isFirstResponder = false
             endRecording(.ready)
             return
         }
@@ -154,13 +159,26 @@ final class RecorderContainerView: NSView {
             return shouldBecomeFirstResponder
         }
 
-        KeyboardShortcuts.setPaused(true, reason: "recorder became first responder")
+        isFirstResponder = true
+        updatePause(reason: "recorder became first responder")
         return shouldBecomeFirstResponder
     }
 
     override func resignFirstResponder() -> Bool {
+        let shouldResignFirstResponder = super.resignFirstResponder()
+
+        if shouldResignFirstResponder {
+            isFirstResponder = false
+            updatePause(reason: "recorder resigned first responder")
+        }
+
         stopRecording()
-        return super.resignFirstResponder()
+        return shouldResignFirstResponder
+    }
+
+    /// Keyboard shortcuts are paused exactly while this recorder is the first responder and recording.
+    private func updatePause(reason: String) {
+        KeyboardShortcuts.setRecorder(self, isPausing: isFirstResponder && mode.isActive, reason: reason)
     }
 
     // in this method the event won't have modifiers, only the character
@@ -277,12 +295,12 @@ final class RecorderContainerView: NSView {
     }
 
     private func endRecording(_ newMode: KeyboardShortcuts.RecorderMode) {
-        KeyboardShortcuts.setPaused(false, reason: "recording ended")
         blur()
         self.mode = newMode
     }
 
     deinit {
+        KeyboardShortcuts.setRecorder(self, isPausing: false, reason: "recorder deallocated")
         NotificationCenter.default.removeObserver(shortcutsNameChangeObserver as Any)
         NotificationCenter.default.removeObserver(windowDidResignKeyObserver as Any)
     }

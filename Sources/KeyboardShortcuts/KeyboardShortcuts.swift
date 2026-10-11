@@ -42,13 +42,31 @@ public enum KeyboardShortcuts {
 	static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "KeyboardShortcuts", category: "KeyboardShortcuts")
 
 	/**
+	The recorders currently recording a shortcut while being the first responder.
+	*/
+	private static var pausingRecorders = Set<ObjectIdentifier>()
+
+	/**
 	When `true`, event handlers will not be called for registered keyboard shortcuts.
 
-	Change it with `setPaused(_:reason:)` so every change is logged with the code path that made it.
+	It's derived from `pausingRecorders`, so it's `true` exactly while some recorder is recording, and can't be left on by a recorder that stopped without going through a particular code path.
 	*/
 	private(set) static var isPaused = false
 
-	static func setPaused(_ newValue: Bool, reason: String) {
+	/**
+	Record whether the given recorder needs keyboard shortcuts paused, and update `isPaused` accordingly.
+	*/
+	static func setRecorder(_ recorder: AnyObject, isPausing: Bool, reason: String) {
+		let id = ObjectIdentifier(recorder)
+
+		if isPausing {
+			pausingRecorders.insert(id)
+		} else {
+			pausingRecorders.remove(id)
+		}
+
+		let newValue = !pausingRecorders.isEmpty
+
 		guard newValue != isPaused else {
 			return
 		}
