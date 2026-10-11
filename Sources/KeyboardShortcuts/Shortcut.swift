@@ -390,4 +390,11 @@ extension KeyboardShortcuts.Shortcut: CustomStringConvertible {
 		return modifiers.humanDescription + " + \(key)"
 	}
 }
+
+extension KeyboardShortcuts.Shortcut {
+	/// The raw Carbon values, which don't depend on the keyboard layout or the main actor.
+	var logDescription: String {
+		"keyCode: \(carbonKeyCode), modifiers: \(carbonModifiers)"
+	}
+}
 #endif

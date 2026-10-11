@@ -319,10 +319,27 @@ public enum KeyboardShortcuts {
 		return decoded
 	}
 
+	private static func matchingNames(
+		for shortcut: Shortcut,
+		in legacyNames: Dictionary<Name, [() -> Void]>.Keys,
+		_ streamNames: Dictionary<Name, [UUID: () -> Void]>.Keys
+	) -> String {
+		let names = Set(legacyNames).union(streamNames)
+			.filter { getShortcut(for: $0) == shortcut }
+			.map(\.rawValue)
+			.sorted()
+
+		return names.isEmpty ? "no handlers" : names.joined(separator: ", ")
+	}
+
 	private static func handleOnKeyDown(_ shortcut: Shortcut) {
+		let names = matchingNames(for: shortcut, in: legacyKeyDownHandlers.keys, streamKeyDownHandlers.keys)
 		guard !isPaused else {
+			logger.notice("Dropped hotkey key down \(shortcut.logDescription, privacy: .public) for \(names, privacy: .public) because isPaused is true")
 			return
 		}
+
+		logger.notice("Received hotkey key down \(shortcut.logDescription, privacy: .public) for \(names, privacy: .public) (isMenuOpen: \(isMenuOpen, privacy: .public))")
 
 		for (name, handlers) in legacyKeyDownHandlers {
 			guard getShortcut(for: name) == shortcut else {
@@ -346,9 +363,13 @@ public enum KeyboardShortcuts {
 	}
 
 	private static func handleOnKeyUp(_ shortcut: Shortcut) {
+		let names = matchingNames(for: shortcut, in: legacyKeyUpHandlers.keys, streamKeyUpHandlers.keys)
 		guard !isPaused else {
+			logger.notice("Dropped hotkey key up \(shortcut.logDescription, privacy: .public) for \(names, privacy: .public) because isPaused is true")
 			return
 		}
+
+		logger.notice("Received hotkey key up \(shortcut.logDescription, privacy: .public) for \(names, privacy: .public) (isMenuOpen: \(isMenuOpen, privacy: .public))")
 
 		for (name, handlers) in legacyKeyUpHandlers {
 			guard getShortcut(for: name) == shortcut else {
