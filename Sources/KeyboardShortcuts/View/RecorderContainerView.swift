@@ -154,7 +154,7 @@ final class RecorderContainerView: NSView {
             return shouldBecomeFirstResponder
         }
 
-        KeyboardShortcuts.isPaused = true
+        KeyboardShortcuts.setPaused(true, reason: "recorder became first responder")
         return shouldBecomeFirstResponder
     }
 
@@ -277,7 +277,7 @@ final class RecorderContainerView: NSView {
     }
 
     private func endRecording(_ newMode: KeyboardShortcuts.RecorderMode) {
-        KeyboardShortcuts.isPaused = false
+        KeyboardShortcuts.setPaused(false, reason: "recording ended")
         blur()
         self.mode = newMode
     }

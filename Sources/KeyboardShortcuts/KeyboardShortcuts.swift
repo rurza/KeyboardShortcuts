@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit.NSMenu
+import os
 
 /**
 Global keyboard shortcuts for your macOS app.
@@ -38,10 +39,23 @@ public enum KeyboardShortcuts {
 	private static var openMenuObserver: NSObjectProtocol?
 	private static var closeMenuObserver: NSObjectProtocol?
 
+	static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "KeyboardShortcuts", category: "KeyboardShortcuts")
+
 	/**
 	When `true`, event handlers will not be called for registered keyboard shortcuts.
+
+	Change it with `setPaused(_:reason:)` so every change is logged with the code path that made it.
 	*/
-	static var isPaused = false
+	private(set) static var isPaused = false
+
+	static func setPaused(_ newValue: Bool, reason: String) {
+		guard newValue != isPaused else {
+			return
+		}
+
+		logger.notice("isPaused \(isPaused, privacy: .public) -> \(newValue, privacy: .public) (\(reason, privacy: .public))")
+		isPaused = newValue
+	}
 
 	/**
 	Enable/disable monitoring of all keyboard shortcuts.
@@ -54,6 +68,7 @@ public enum KeyboardShortcuts {
 				return
 			}
 
+			logger.notice("isEnabled \(oldValue, privacy: .public) -> \(isEnabled, privacy: .public)")
 			CarbonKeyboardShortcuts.updateEventHandler()
 		}
 	}
@@ -71,6 +86,7 @@ public enum KeyboardShortcuts {
 				return
 			}
 
+			logger.notice("isMenuOpen \(oldValue, privacy: .public) -> \(isMenuOpen, privacy: .public)")
 			CarbonKeyboardShortcuts.updateEventHandler()
 		}
 	}
