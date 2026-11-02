@@ -104,6 +104,27 @@ final class SettingsViewController: NSViewController {
 }
 ```
 
+## Shared with another process
+
+An app split into processes — a settings window that records a shortcut and a helper that acts on it — can keep its shortcuts in a store they share, such as an App Group's suite. Set it once, before the first `Name` is created:
+
+```swift
+KeyboardShortcuts.userDefaults = UserDefaults(suiteName: "TEAMID.group.com.example.app")!
+```
+
+The keys are the same as in the standard defaults. A shortcut another process writes there is heard at once, and the process that listens for it re-registers it. A shortcut is registered only by a process that listens for its name, so the settings window never holds the helper's hot key. A name containing a dot is not heard from other processes. An app that sets no store behaves exactly as before.
+
+To let go of every registered shortcut while another process records one, and take them back after, use `KeyboardShortcuts.isEnabled = false` and `= true`: the hot keys are unregistered from the system meanwhile, not only ignored.
+
+## Driving the recorder from the keyboard
+
+```swift
+KeyboardShortcuts.Recorder(for: .toggleUnicornMode)
+	.keyboardNavigableRecorder()
+```
+
+Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. A recorder without the modifier behaves exactly as before.
+
 ## Localization
 
 This package supports [localizations](/Sources/KeyboardShortcuts/Localization). PR welcome for more!
