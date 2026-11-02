@@ -324,6 +324,26 @@ public enum KeyboardShortcuts {
 	}
 
 	/**
+	Whether the system holds the name's shortcut for this process now.
+
+	True only when the name has a shortcut, this process listens for it, and the system accepted the registration: not taken first by another app, and not let go of while the package or the name is disabled. With a shared store, a process that holds a shortcut can write this answer where the process that records it reads it, which is how a settings window learns that a shortcut it shows is taken.
+
+	A shortcut the system refused is not tried again until the name's shortcut changes. Read the answer again after `shortcutDidChangeNotification` and after `isEnabled` changes.
+	*/
+	public static func isHeld(_ name: Name) -> Bool {
+		guard let shortcut = getShortcut(for: name) else {
+			return false
+		}
+
+		return CarbonKeyboardShortcuts.isRegistered(shortcut)
+	}
+
+	/**
+	Posted on the main thread when a name's shortcut changed, in this process or — with a shared store — in another, once this process has registered the new shortcut or let go of the old one. `userInfo["name"]` is the `Name`.
+	*/
+	public static let shortcutDidChangeNotification = Notification.Name.shortcutByNameDidChange
+
+	/**
 	Get the keyboard shortcut for a name.
 	*/
 	public static func getShortcut(for name: Name) -> Shortcut? {

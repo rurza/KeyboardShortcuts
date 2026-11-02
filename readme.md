@@ -116,6 +116,8 @@ The keys are the same as in the standard defaults. A shortcut another process wr
 
 To let go of every registered shortcut while another process records one, and take them back after, use `KeyboardShortcuts.isEnabled = false` and `= true`: the hot keys are unregistered from the system meanwhile, not only ignored.
 
+To learn whether the system gave this process a shortcut — or another app took it first — ask `KeyboardShortcuts.isHeld(_:)`, and ask again after `KeyboardShortcuts.shortcutDidChangeNotification` and after `isEnabled` changes. A process that holds a shortcut can write the answer into the shared store for the process that records it.
+
 ## Driving the recorder from the keyboard
 
 ```swift
