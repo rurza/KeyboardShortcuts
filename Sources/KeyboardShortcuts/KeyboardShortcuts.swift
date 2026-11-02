@@ -327,8 +327,12 @@ public enum KeyboardShortcuts {
 	Get the keyboard shortcut for a name.
 	*/
 	public static func getShortcut(for name: Name) -> Shortcut? {
+		getShortcut(for: name, in: userDefaults)
+	}
+
+	private static func getShortcut(for name: Name, in store: UserDefaults) -> Shortcut? {
 		guard
-			let data = UserDefaults.standard.string(forKey: userDefaultsKey(for: name))?.data(using: .utf8),
+			let data = store.string(forKey: userDefaultsKey(for: name))?.data(using: .utf8),
 			let decoded = try? JSONDecoder().decode(Shortcut.self, from: data)
 		else {
 			return nil
@@ -462,6 +466,158 @@ public enum KeyboardShortcuts {
 		registerShortcutIfNeeded(for: name)
 	}
 
+	/**
+	The defaults shortcuts are stored in and read from. `UserDefaults.standard` unless the app chooses another.
+
+	Choose a suite several processes share — an App Group's — and each of them reads and writes the same shortcuts, under the same keys `.standard` would hold them. Set it once, before the first `Name` is created and before any listener is added, since a `Name` with a default writes that default to the store when it is created.
+
+	With any store but `.standard`:
+
+	- A shortcut another process writes or clears is heard at once: this process lets go of the old one, registers the new one if it listens for the name, and every `Recorder` showing the name shows it. A name containing a dot is not heard, as key-value observing cannot watch such a key.
+	- A shortcut is registered only by a process that listens for its name, so a process that only records shortcuts — a settings window beside a helper that acts on them — never holds one the other needs.
+
+	With `.standard` nothing changes: no other process is listened to, and setting a shortcut registers it as it always has.
+	*/
+	public static var userDefaults: UserDefaults = .standard {
+		didSet {
+			guard userDefaults !== oldValue else {
+				return
+			}
+
+			storeDidMove(from: oldValue)
+		}
+	}
+
+	/**
+	Every name created in this process, by key, so that a change to a key can be traced to the names it belongs to.
+	*/
+	private static var knownNames = [String: Set<Name>]()
+
+	/**
+	The shortcut last seen under each observed key, so that a change this process made itself is not acted on twice.
+	*/
+	private static var lastSeenShortcuts = [String: Shortcut?]()
+
+	private static var storeObserver: StoreObserver?
+
+	static var isObservingOtherProcesses: Bool { storeObserver != nil }
+
+	static func track(_ name: Name) {
+		guard Thread.isMainThread else {
+			DispatchQueue.main.async {
+				track(name)
+			}
+			return
+		}
+
+		let key = userDefaultsKey(for: name)
+		knownNames[key, default: []].insert(name)
+		observe(key, of: name)
+	}
+
+	private static func observe(_ key: String, of name: Name) {
+		guard let storeObserver else {
+			return
+		}
+
+		if lastSeenShortcuts[key] == nil {
+			lastSeenShortcuts[key] = .some(getShortcut(for: name))
+		}
+
+		storeObserver.observe(key)
+	}
+
+	private static func storeDidMove(from oldStore: UserDefaults) {
+		let shortcutsInOldStore = knownNames.compactMapValues { names in
+			names.first.map { getShortcut(for: $0, in: oldStore) }
+		}
+
+		storeObserver?.invalidate()
+		storeObserver = nil
+		lastSeenShortcuts.removeAll()
+
+		if userDefaults !== UserDefaults.standard {
+			storeObserver = StoreObserver(defaults: userDefaults) { key in
+				storeDidChange(forKey: key)
+			}
+		}
+
+		for (key, oldShortcut) in shortcutsInOldStore {
+			lastSeenShortcuts[key] = .some(oldShortcut)
+			storeDidChange(forKey: key)
+
+			if let name = knownNames[key]?.first {
+				observe(key, of: name)
+			}
+		}
+
+		if storeObserver == nil {
+			lastSeenShortcuts.removeAll()
+		}
+	}
+
+	/**
+	Follow a change to a key that this process did not make through `setShortcut`.
+	*/
+	private static func storeDidChange(forKey key: String) {
+		guard
+			let names = knownNames[key],
+			let anyName = names.first,
+			let oldShortcut = lastSeenShortcuts[key]
+		else {
+			return
+		}
+
+		let newShortcut = getShortcut(for: anyName)
+
+		guard newShortcut != oldShortcut else {
+			return
+		}
+
+		lastSeenShortcuts[key] = .some(newShortcut)
+
+		// A name this process disabled stays disabled whatever shortcut it is given.
+		let wasDisabled = oldShortcut.map { !registeredShortcuts.contains($0) } ?? false
+
+		if let oldShortcut {
+			unregisterIfNeeded(oldShortcut)
+		}
+
+		if
+			let newShortcut,
+			!wasDisabled,
+			names.contains(where: hasHandlers)
+		{
+			register(newShortcut)
+		}
+
+		logger.notice("\(key, privacy: .public) changed in another process: \(oldShortcut?.logDescription ?? "none", privacy: .public) -> \(newShortcut?.logDescription ?? "none", privacy: .public)")
+
+		for name in names {
+			userDefaultsDidChange(name: name)
+		}
+	}
+
+	private static func hasHandlers(_ name: Name) -> Bool {
+		!(legacyKeyDownHandlers[name]?.isEmpty ?? true)
+			|| !(legacyKeyUpHandlers[name]?.isEmpty ?? true)
+			|| !(streamKeyDownHandlers[name]?.isEmpty ?? true)
+			|| !(streamKeyUpHandlers[name]?.isEmpty ?? true)
+	}
+
+	/**
+	Note a shortcut this process is about to write, so that hearing its own write is not taken for another process's.
+	*/
+	private static func willWrite(_ shortcut: Shortcut?, for name: Name) {
+		let key = userDefaultsKey(for: name)
+
+		guard lastSeenShortcuts[key] != nil else {
+			return
+		}
+
+		lastSeenShortcuts[key] = .some(shortcut)
+	}
+
 	private static let userDefaultsPrefix = "KeyboardShortcuts_"
 
 	private static func userDefaultsKey(for shortcutName: Name) -> String { "\(userDefaultsPrefix)\(shortcutName.rawValue)"
@@ -481,8 +637,13 @@ public enum KeyboardShortcuts {
 			unregister(oldShortcut)
 		}
 
-		register(shortcut)
-		UserDefaults.standard.set(encoded, forKey: userDefaultsKey(for: name))
+		// A store shared with other processes is registered from only by the processes that listen.
+		if !isObservingOtherProcesses || hasHandlers(name) {
+			register(shortcut)
+		}
+
+		willWrite(shortcut, for: name)
+		userDefaults.set(encoded, forKey: userDefaultsKey(for: name))
 		userDefaultsDidChange(name: name)
 	}
 
@@ -491,7 +652,8 @@ public enum KeyboardShortcuts {
 			return
 		}
 
-		UserDefaults.standard.set(false, forKey: userDefaultsKey(for: name))
+		willWrite(nil, for: name)
+		userDefaults.set(false, forKey: userDefaultsKey(for: name))
 		unregister(shortcut)
 		userDefaultsDidChange(name: name)
 	}
@@ -501,13 +663,14 @@ public enum KeyboardShortcuts {
 			return
 		}
 
-		UserDefaults.standard.removeObject(forKey: userDefaultsKey(for: name))
+		willWrite(nil, for: name)
+		userDefaults.removeObject(forKey: userDefaultsKey(for: name))
 		unregister(shortcut)
 		userDefaultsDidChange(name: name)
 	}
 
 	static func userDefaultsContains(name: Name) -> Bool {
-		UserDefaults.standard.object(forKey: userDefaultsKey(for: name)) != nil
+		userDefaults.object(forKey: userDefaultsKey(for: name)) != nil
 	}
 }
 

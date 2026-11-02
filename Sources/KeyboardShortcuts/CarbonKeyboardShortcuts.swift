@@ -203,6 +203,11 @@ enum CarbonKeyboardShortcuts {
 		}
 	}
 
+	/// Whether the system holds the shortcut for this process now — registered, and not let go of while disabled.
+	static func isRegistered(_ shortcut: KeyboardShortcuts.Shortcut) -> Bool {
+		hotKeys.values.contains { $0.shortcut == shortcut && $0.carbonHotKey != nil }
+	}
+
 	static func unregisterAll() {
 		for hotKey in hotKeys.values {
 			unregisterHotKey(hotKey)

@@ -47,6 +47,7 @@ extension KeyboardShortcuts {
 			}
 
 			KeyboardShortcuts.initialize()
+			KeyboardShortcuts.track(self)
 		}
 	}
 }
