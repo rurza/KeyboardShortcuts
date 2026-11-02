@@ -5,12 +5,13 @@ import Carbon.HIToolbox
 
 protocol RecorderContainerDelegate: AnyObject {
     func recorderModeDidChange(_ mode: KeyboardShortcuts.RecorderMode)
+    func recorderFocusDidChange(_ isFocused: Bool)
 }
 
 final class RecorderContainerView: NSView {
     private let onChange: ((_ shortcut: KeyboardShortcuts.Shortcut?) -> Void)?
     private var oldSet: String?
-    private var mode: KeyboardShortcuts.RecorderMode = .ready {
+    private(set) var mode: KeyboardShortcuts.RecorderMode = .ready {
         willSet {
             if case let .set(string) = mode, case .preRecording = newValue {
                 oldSet = string
@@ -29,6 +30,13 @@ final class RecorderContainerView: NSView {
     }
 
     var delegate: RecorderContainerDelegate?
+
+    /**
+     Whether the recorder is driven from the keyboard as well as by the mouse.
+
+     Tab reaches it whatever the system's keyboard-navigation setting, and it is then focused without listening. Space or Return starts listening, Esc gives up and keeps the old shortcut, and Delete clears the shortcut. Recording a shortcut, or giving up, leaves it focused.
+     */
+    var isKeyboardNavigable = false
     /// Tracked here because `window.firstResponder` isn't updated yet inside `becomeFirstResponder()` and `resignFirstResponder()`.
     private var isFirstResponder = false
     private var shortcutsNameChangeObserver: NSObjectProtocol?
@@ -50,7 +58,15 @@ final class RecorderContainerView: NSView {
     }
 
     /// :nodoc:
-    override var canBecomeKeyView: Bool { mode.isActive }
+    override var canBecomeKeyView: Bool { isKeyboardNavigable || mode.isActive }
+
+    /// :nodoc:
+    override var acceptsFirstResponder: Bool { isKeyboardNavigable || super.acceptsFirstResponder }
+
+    /// Clicks pass through to the SwiftUI pill above, which is where they are handled.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        isKeyboardNavigable ? nil : super.hitTest(point)
+    }
 
     required init(
         for name: KeyboardShortcuts.Name,
@@ -148,6 +164,11 @@ final class RecorderContainerView: NSView {
                     }
                 }
 
+                // A recorder driven from the keyboard keeps the focus, as any control does, for when the window is key again.
+                guard !self.isKeyboardNavigable else {
+                    return
+                }
+
                 window.makeFirstResponder(nil)
             }
     }
@@ -161,6 +182,7 @@ final class RecorderContainerView: NSView {
 
         isFirstResponder = true
         updatePause(reason: "recorder became first responder")
+        delegate?.recorderFocusDidChange(true)
         return shouldBecomeFirstResponder
     }
 
@@ -170,6 +192,7 @@ final class RecorderContainerView: NSView {
         if shouldResignFirstResponder {
             isFirstResponder = false
             updatePause(reason: "recorder resigned first responder")
+            delegate?.recorderFocusDidChange(false)
         }
 
         stopRecording()
@@ -181,23 +204,53 @@ final class RecorderContainerView: NSView {
         KeyboardShortcuts.setRecorder(self, isPausing: isFirstResponder && mode.isActive, reason: reason)
     }
 
+    /// The keys a recorder driven from the keyboard answers while it is focused: they reach only the first responder, so a key pressed elsewhere in the window never starts it.
+    override func keyDown(with event: NSEvent) {
+        guard isKeyboardNavigable else {
+            super.keyDown(with: event)
+            return
+        }
+
+        if mode.isActive {
+            if event.specialKey == .backTab {
+                giveUp()
+                window?.selectKeyView(preceding: self)
+            }
+
+            // Anything else is not a shortcut, and listening goes on.
+            return
+        }
+
+        guard event.modifiers.isEmpty else {
+            super.keyDown(with: event)
+            return
+        }
+
+        if event.keyCode == kVK_Space || event.specialKey == .carriageReturn || event.specialKey == .enter {
+            startRecording()
+        } else if onlyDeletePressed(event) {
+            saveShortcut(nil)
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
     // in this method the event won't have modifiers, only the character
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         guard mode.isActive else { return false }
         guard !onlyTabPressed(event) else {
-            endRecording(.ready)
+            if isKeyboardNavigable {
+                giveUp()
+                window?.selectKeyView(following: self)
+            } else {
+                endRecording(.ready)
+            }
+
             return true
         }
 
         guard !onlyEscapePressed(event) else {
-            endRecording {
-                if let oldSet {
-                    return .set(oldSet)
-                } else {
-                    return .ready
-                }
-            }
-
+            giveUp()
             return true
         }
 
@@ -294,8 +347,22 @@ final class RecorderContainerView: NSView {
         endRecording(newMode())
     }
 
+    /// Stop listening and keep the shortcut there was before.
+    private func giveUp() {
+        endRecording {
+            if let oldSet {
+                return .set(oldSet)
+            } else {
+                return .ready
+            }
+        }
+    }
+
     private func endRecording(_ newMode: KeyboardShortcuts.RecorderMode) {
-        blur()
+        if !isKeyboardNavigable {
+            blur()
+        }
+
         self.mode = newMode
     }
 

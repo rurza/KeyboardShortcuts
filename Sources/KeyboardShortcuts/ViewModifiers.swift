@@ -1,6 +1,30 @@
 #if os(macOS)
 import SwiftUI
 
+extension View {
+	/**
+	Let every `KeyboardShortcuts.Recorder` inside this view be driven from the keyboard as well as by the mouse.
+
+	Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening, with a focus ring. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. Recording a shortcut, or giving up, leaves the recorder focused.
+
+	A recorder outside such a view is reached by Tab only while it listens, as before.
+	*/
+	public func keyboardNavigableRecorder(_ isNavigable: Bool = true) -> some View {
+		environment(\.isKeyboardNavigableRecorder, isNavigable)
+	}
+}
+
+private struct KeyboardNavigableRecorderKey: EnvironmentKey {
+	static let defaultValue = false
+}
+
+extension EnvironmentValues {
+	var isKeyboardNavigableRecorder: Bool {
+		get { self[KeyboardNavigableRecorderKey.self] }
+		set { self[KeyboardNavigableRecorderKey.self] = newValue }
+	}
+}
+
 @available(macOS 12, *)
 extension View {
 	/**
