@@ -123,7 +123,7 @@ KeyboardShortcuts.Recorder(for: .toggleUnicornMode)
 	.keyboardNavigableRecorder()
 ```
 
-Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. A recorder without the modifier behaves exactly as before.
+Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. Its ✕ clears the shortcut too, a default included, where a recorder without the modifier resets it to the default. A recorder without the modifier behaves exactly as before.
 
 ## Localization
 

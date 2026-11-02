@@ -5,7 +5,7 @@ extension View {
 	/**
 	Let every `KeyboardShortcuts.Recorder` inside this view be driven from the keyboard as well as by the mouse.
 
-	Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening, with a focus ring. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. Recording a shortcut, or giving up, leaves the recorder focused.
+	Tab reaches the recorder whatever the system's keyboard-navigation setting, and it is then focused without listening, with a focus ring. Space or Return starts listening, Esc gives up and keeps the old shortcut, Delete clears the shortcut, and Tab gives up and moves on. Its ✕ clears the shortcut as Delete does, where a recorder without the modifier resets it to the name's default. Recording a shortcut, or giving up, leaves the recorder focused.
 
 	A recorder outside such a view is reached by Tab only while it listens, as before.
 	*/

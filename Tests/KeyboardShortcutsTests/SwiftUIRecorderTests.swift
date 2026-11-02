@@ -90,6 +90,34 @@ final class SwiftUIRecorderTests: XCTestCase {
 	}
 }
 
+extension SwiftUIRecorderTests {
+	func testTheClearButtonOfAKeyboardNavigableRecorderTurnsADefaultedShortcutOff() {
+		let defaultShortcut = KeyboardShortcuts.Shortcut(.k, modifiers: [.control, .option, .command])
+		let defaulted = KeyboardShortcuts.Name("SwiftUIRecorderTests.clear.\(UUID().uuidString)", default: defaultShortcut)
+		var changes = [KeyboardShortcuts.Shortcut?]()
+
+		KeyboardShortcuts.Recorder.clearButtonPressed(for: defaulted, isKeyboardNavigable: true) { changes.append($0) }
+
+		XCTAssertNil(KeyboardShortcuts.getShortcut(for: defaulted))
+		XCTAssertEqual(changes, [nil])
+		UserDefaults.standard.removeObject(forKey: "KeyboardShortcuts_\(defaulted.rawValue)")
+	}
+
+	func testTheClearButtonOfARecorderNotAskedForItStillResetsToTheDefault() {
+		let defaultShortcut = KeyboardShortcuts.Shortcut(.j, modifiers: [.control, .option, .command])
+		let defaulted = KeyboardShortcuts.Name("SwiftUIRecorderTests.reset.\(UUID().uuidString)", default: defaultShortcut)
+		KeyboardShortcuts.setShortcut(KeyboardShortcuts.Shortcut(.j, modifiers: [.control, .option, .shift]), for: defaulted)
+		var changes = [KeyboardShortcuts.Shortcut?]()
+
+		KeyboardShortcuts.Recorder.clearButtonPressed(for: defaulted, isKeyboardNavigable: false) { changes.append($0) }
+
+		XCTAssertEqual(KeyboardShortcuts.getShortcut(for: defaulted), defaultShortcut)
+		XCTAssertEqual(changes, [nil])
+		KeyboardShortcuts.setShortcut(nil, for: defaulted)
+		UserDefaults.standard.removeObject(forKey: "KeyboardShortcuts_\(defaulted.rawValue)")
+	}
+}
+
 extension NSView {
 	fileprivate func descendants<T: NSView>(of type: T.Type) -> [T] {
 		subviews.flatMap { subview -> [T] in

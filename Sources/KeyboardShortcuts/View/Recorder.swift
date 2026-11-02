@@ -36,8 +36,7 @@ extension KeyboardShortcuts {
 								if mode.isActive {
 									isActive = false
 								} else if case .set = mode {
-									KeyboardShortcuts.reset([name])
-									onChange?(nil)
+									Self.clearButtonPressed(for: name, isKeyboardNavigable: isKeyboardNavigable, onChange: onChange)
 								}
 							},
 							label: {
@@ -56,6 +55,21 @@ extension KeyboardShortcuts {
 			}
 			.animation(.spring(duration: 0.4), value: mode)
 			.help(tooltip)
+		}
+
+		/**
+		What ✕ does to a shortcut that is set.
+
+		A keyboard-navigable recorder clears it, a default included, as Delete does, so that a click can turn the shortcut off. Any other recorder resets it to the name's default, as it always has.
+		*/
+		static func clearButtonPressed(for name: Name, isKeyboardNavigable: Bool, onChange: ((Shortcut?) -> Void)?) {
+			if isKeyboardNavigable {
+				KeyboardShortcuts.setShortcut(nil, for: name)
+			} else {
+				KeyboardShortcuts.reset([name])
+			}
+
+			onChange?(nil)
 		}
 
 		private var cornerRadius: CGFloat { mode.thereIsNoKeys ? 13 : 6 }
