@@ -73,7 +73,20 @@ public enum KeyboardShortcuts {
 
 		logger.notice("isPaused \(isPaused, privacy: .public) -> \(newValue, privacy: .public) (\(reason, privacy: .public))")
 		isPaused = newValue
+		NotificationCenter.default.post(name: recordingDidChangeNotification, object: nil)
 	}
+
+	/**
+	Whether a recorder in this process is listening for a shortcut now.
+
+	While it is, this process's own handlers are not called. A shortcut registered by another process still takes its key before the recorder sees it, so an app whose shortcut is held elsewhere — a helper sharing the store — tells that process to let go while this is `true`, and to take it back when it is `false` again.
+	*/
+	public static var isRecording: Bool { isPaused }
+
+	/**
+	Posted on the main thread when ``isRecording`` changes: a recorder began listening, or the last one listening stopped — by recording, by giving up, by losing the focus, or by leaving its window.
+	*/
+	public static let recordingDidChangeNotification = Notification.Name("KeyboardShortcuts_recordingDidChange")
 
 	/**
 	Enable/disable monitoring of all keyboard shortcuts.

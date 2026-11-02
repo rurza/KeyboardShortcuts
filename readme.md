@@ -118,6 +118,8 @@ To let go of every registered shortcut while another process records one, and ta
 
 To learn whether the system gave this process a shortcut — or another app took it first — ask `KeyboardShortcuts.isHeld(_:)`, and ask again after `KeyboardShortcuts.shortcutDidChangeNotification` and after `isEnabled` changes. A process that holds a shortcut can write the answer into the shared store for the process that records it.
 
+A shortcut held by another process takes its key before a recorder here can see it. While `KeyboardShortcuts.isRecording` is `true` — announced by `KeyboardShortcuts.recordingDidChangeNotification` — tell that process to set `isEnabled = false`, and to set it back when recording ends.
+
 ## Driving the recorder from the keyboard
 
 ```swift
